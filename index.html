@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="adlai.net - Interactive bouncing logo">
+    <meta name="theme-color" content="#4a148c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>adlai.net</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+    <style>
+        @keyframes smoothRotate {
+            0% {
+                -webkit-transform: rotate(0deg);
+                transform: rotate(0deg);
+            }
+            100% {
+                -webkit-transform: rotate(360deg);
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Respect reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            body::before {
+                animation: none !important;
+            }
+            .bouncing-text {
+                position: static !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+            }
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            overflow: hidden;
+            height: 100vh;
+            height: 100svh; /* Use small viewport height for mobile */
+            font-family: 'Audiowide', 'Orbitron', 'Exo', 'Rajdhani', sans-serif;
+            position: relative;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: none;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -100%;
+            left: -100%;
+            width: 300%;
+            height: 300%;
+            background: linear-gradient(45deg, #2c1810, #4a148c, #1a237e, #2c1810);
+            -webkit-animation: smoothRotate 4s linear infinite;
+            animation: smoothRotate 4s linear infinite;
+            z-index: -1;
+            will-change: transform;
+        }
+
+        .bouncing-text {
+            position: absolute;
+            color: white;
+            font-size: 40px; /* Mobile default */
+            font-family: 'Audiowide', 'Orbitron', 'Exo', 'Rajdhani', sans-serif;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            white-space: nowrap;
+            transition: none;
+            will-change: transform;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            -webkit-transform: translateZ(0); /* Force hardware acceleration */
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+        }
+
+        /* Tablet */
+        @media (min-width: 768px) {
+            .bouncing-text {
+                font-size: 50px;
+            }
+        }
+
+        /* Desktop */
+        @media (min-width: 1024px) {
+            .bouncing-text {
+                font-size: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bouncing-text" id="bouncingText">adlai.net</div>
+
+    <script>
+        (function() {
+            'use strict';
+            
+            // Feature detection and fallbacks
+            if (!window.requestAnimationFrame) {
+                window.requestAnimationFrame = function(callback) {
+                    return setTimeout(callback, 16); // ~60fps fallback
+                };
+            }
+            
+            const text = document.getElementById('bouncingText');
+            if (!text) return; // Exit if element not found
+            
+            // Check for reduced motion preference
+            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReducedMotion) return; // Exit if user prefers reduced motion
+            
+            // Cache dimensions to avoid repeated getBoundingClientRect calls
+            let textWidth, textHeight;
+            let windowWidth = window.innerWidth;
+            let windowHeight = window.innerHeight;
+            
+            // Position and velocity
+            let x, y;
+            let dx = 2;
+            let dy = 2;
+            
+            function updateDimensions() {
+                const rect = text.getBoundingClientRect();
+                textWidth = rect.width;
+                textHeight = rect.height;
+                windowWidth = window.innerWidth;
+                windowHeight = window.innerHeight;
+            }
+            
+            function animate() {
+                // Update position
+                x += dx;
+                y += dy;
+                
+                // Check for collisions with edges
+                if (x <= 0 || x >= windowWidth - textWidth) {
+                    dx = -dx;
+                    x = Math.max(0, Math.min(x, windowWidth - textWidth));
+                }
+                
+                if (y <= 0 || y >= windowHeight - textHeight) {
+                    dy = -dy;
+                    y = Math.max(0, Math.min(y, windowHeight - textHeight));
+                }
+                
+                // Apply position using transform for better performance
+                text.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+                
+                requestAnimationFrame(animate);
+            }
+            
+            // Initialize after font loads
+            function initialize() {
+                updateDimensions();
+                
+                // Set initial position
+                x = Math.random() * Math.max(0, windowWidth - textWidth);
+                y = Math.random() * Math.max(0, windowHeight - textHeight);
+                
+                // Start animation
+                animate();
+            }
+            
+            // Wait for fonts to load before starting
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(initialize);
+            } else {
+                // Fallback for browsers without Font Loading API
+                setTimeout(initialize, 100);
+            }
+            
+            // Handle window resize with debouncing
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    updateDimensions();
+                    // Constrain position to new bounds
+                    x = Math.min(x, Math.max(0, windowWidth - textWidth));
+                    y = Math.min(y, Math.max(0, windowHeight - textHeight));
+                }, 100);
+            });
+            
+            // Prevent scrolling on mobile
+            document.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+            
+        })();
+    </script>
+</body>
+</html>
