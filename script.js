@@ -640,17 +640,34 @@
         }
     }
     
-    function animate() {
-        // Update Matter.js engine
-        Engine.update(engine, 16.666); // ~60fps
+    // Performance optimization for large monitors
+    let frameCount = 0;
+    let lastTime = performance.now();
+    
+    // Detect large monitor for performance scaling
+    const isLargeMonitor = window.innerWidth > 2000 || window.innerHeight > 1200;
+    const stuckCheckInterval = isLargeMonitor ? 6 : 3; // Check stuck patterns less frequently on large monitors
+    const cleanupInterval = isLargeMonitor ? 120 : 60; // Clean up less frequently on large monitors
+    
+    function animate(currentTime) {
+        // Calculate delta time for smooth animation regardless of refresh rate
+        const deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        frameCount++;
+        
+        // Cap delta time to prevent large jumps
+        const cappedDelta = Math.min(deltaTime, 33.333); // Max 30fps equivalent
+        
+        // Update Matter.js engine with delta time
+        Engine.update(engine, cappedDelta);
         
         // Sync DOM elements with Matter.js bodies and ensure constant velocity
         for (let i = 0; i < bouncingElements.length; i++) {
             const element = bouncingElements[i];
             const body = element.body;
             
-            // Check for stuck patterns every 3 frames for faster detection
-            if (engine.timing.timestamp % 3 < 1) {
+            // Check for stuck patterns less frequently on large monitors
+            if (frameCount % stuckCheckInterval === 0) {
                 detectStuckPattern(element);
             }
             
@@ -680,8 +697,8 @@
                 normalizeVelocity(body);
             }
             
-            // Clean up old wall cooldowns every 60 frames (~1 second)
-            if (engine.timing.timestamp % 60 < 1) {
+            // Clean up old wall cooldowns less frequently on large monitors
+            if (frameCount % cleanupInterval === 0) {
                 const currentTime = Date.now();
                 Object.keys(element.wallCooldown).forEach(wallLabel => {
                     if (currentTime - element.wallCooldown[wallLabel] > 500) {
@@ -717,8 +734,9 @@
         
         updateDimensions();
         
-        // Start animation
-        animate();
+        // Start animation with initial timestamp
+        lastTime = performance.now();
+        animate(lastTime);
     }
     
     // Wait for fonts to load before starting
