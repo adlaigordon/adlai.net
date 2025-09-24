@@ -23,19 +23,6 @@
             }
         }
 
-        /* Respect reduced motion preferences */
-        @media (prefers-reduced-motion: reduce) {
-            body::before {
-                animation: none !important;
-            }
-            .bouncing-text {
-                position: static !important;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-            }
-        }
 
         body {
             margin: 0;
@@ -119,10 +106,6 @@
             
             const text = document.getElementById('bouncingText');
             if (!text) return; // Exit if element not found
-            
-            // Check for reduced motion preference
-            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (prefersReducedMotion) return; // Exit if user prefers reduced motion
             
             // Cache dimensions to avoid repeated getBoundingClientRect calls
             let textWidth, textHeight;
