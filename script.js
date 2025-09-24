@@ -71,10 +71,11 @@
     let isProcessingCollisions = false;
     
     // Maximum elements before reset - CHANGE THIS TO ADJUST RESET POINT:
-    // 20 = default (resets when 20 elements reached)
+    // 100 = current (resets when 100 elements reached)
+    // 20 = previous default
     // 10 = more frequent resets
     // 50 = less frequent resets
-    const MAX_ELEMENTS = 20;
+    const MAX_ELEMENTS = 100;
     
     // Manual trigger clicks/taps - CHANGE THIS TO ADJUST MANUAL TRIGGER:
     // 2 = current (2 clicks/taps to trigger manually)
