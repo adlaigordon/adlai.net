@@ -67,6 +67,9 @@
     // 200ms = very conservative (longer cooldown)
     const WALL_COOLDOWN_MS = 100;
     
+    // Global collision processing flag to prevent ghost bounces
+    let isProcessingCollisions = false;
+    
     // Maximum elements before reset - CHANGE THIS TO ADJUST RESET POINT:
     // 20 = default (resets when 20 elements reached)
     // 10 = more frequent resets
@@ -447,14 +450,17 @@
                             console.log('Wall bounce:', wallLabel, 'element A');
                         }
                         elementA.wallCooldown[wallLabel] = currentTime;
-                        preventWallSliding(textBodyA, wallBody);
-                        normalizeVelocity(textBodyA, isWallCollision);
+                        // Add small delay to prevent conflict with Matter.js collision response
+                        setTimeout(() => {
+                            preventWallSliding(textBodyA, wallBody);
+                            normalizeVelocity(textBodyA, isWallCollision);
+                        }, 8);
                     } else if (DEBUG_CORNER_DETECTION) {
                         console.log('Blocked double bounce:', wallLabel, 'element A');
                     }
                 } else if (!isWallCollision) {
-                    // Small delay for element-to-element collisions
-                    setTimeout(() => normalizeVelocity(textBodyA, isWallCollision), 10);
+                    // Longer delay for element-to-element collisions to prevent ghost bounces
+                    setTimeout(() => normalizeVelocity(textBodyA, isWallCollision), 20);
                 }
             }
             if (textBodyB) {
@@ -473,14 +479,17 @@
                             console.log('Wall bounce:', wallLabel, 'element B');
                         }
                         elementB.wallCooldown[wallLabel] = currentTime;
-                        preventWallSliding(textBodyB, wallBody);
-                        normalizeVelocity(textBodyB, isWallCollision);
+                        // Add small delay to prevent conflict with Matter.js collision response
+                        setTimeout(() => {
+                            preventWallSliding(textBodyB, wallBody);
+                            normalizeVelocity(textBodyB, isWallCollision);
+                        }, 8);
                     } else if (DEBUG_CORNER_DETECTION) {
                         console.log('Blocked double bounce:', wallLabel, 'element B');
                     }
                 } else if (!isWallCollision) {
-                    // Small delay for element-to-element collisions
-                    setTimeout(() => normalizeVelocity(textBodyB, isWallCollision), 10);
+                    // Longer delay for element-to-element collisions to prevent ghost bounces
+                    setTimeout(() => normalizeVelocity(textBodyB, isWallCollision), 20);
                 }
             }
             
@@ -691,10 +700,12 @@
                 });
             }
             
-            // Ensure constant velocity (safety check)
-            const currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-            if (Math.abs(currentSpeed - CONSTANT_SPEED) > 0.1) {
-                normalizeVelocity(body);
+            // Ensure constant velocity (safety check) - only check every 10 frames to reduce conflicts
+            if (frameCount % 10 === 0) {
+                const currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+                if (Math.abs(currentSpeed - CONSTANT_SPEED) > 0.5) { // Increased tolerance
+                    normalizeVelocity(body);
+                }
             }
             
             // Clean up old wall cooldowns less frequently on large monitors
