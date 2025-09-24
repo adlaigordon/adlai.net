@@ -43,7 +43,7 @@
     // 0.9 = 10% smaller each time
     // 0.8 = 20% smaller each time  
     // 0.95 = 5% smaller each time
-    const SCALE_FACTOR = 0.9;
+    const SCALE_FACTOR = 0.97;
     
     // Corner detection sensitivity - CHANGE THIS VALUE TO ADJUST CORNER DETECTION:
     // 30 = very strict (classic DVD behavior - rare corner hits)
