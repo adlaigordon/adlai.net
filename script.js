@@ -74,10 +74,11 @@
     const MAX_ELEMENTS = 20;
     
     // Manual trigger clicks/taps - CHANGE THIS TO ADJUST MANUAL TRIGGER:
-    // 3 = default (3 clicks/taps to trigger manually)
+    // 2 = current (2 clicks/taps to trigger manually)
+    // 3 = previous (3 clicks/taps to trigger manually)
     // 5 = original (5 clicks/taps to trigger)
     // 1 = single click/tap triggers
-    const MANUAL_TRIGGER_COUNT = 3;
+    const MANUAL_TRIGGER_COUNT = 2;
     
     // Window dimensions
     let windowWidth = window.innerWidth;
@@ -304,7 +305,7 @@
         World.add(world, walls);
     }
     
-    function createElement(x = null, y = null) {
+    function createElement(x = null, y = null, spawnFromTop = false, enableFadeIn = false) {
         // Calculate scale for new element (each one gets progressively smaller)
         const elementScale = Math.pow(SCALE_FACTOR, bouncingElements.length);
         
@@ -325,6 +326,23 @@
         newElement.style.fontSize = scaledFontSize + 'px';
         
         document.body.appendChild(newElement);
+        
+        // Apply fade-in animation if enabled
+        if (spawnFromTop || enableFadeIn) {
+            // Start invisible and fade in
+            newElement.style.opacity = '0';
+            newElement.style.transition = 'opacity 1s ease-in';
+            
+            // Trigger fade-in after a brief delay
+            setTimeout(() => {
+                newElement.style.opacity = '1';
+            }, 10);
+            
+            // Clean up transition after animation
+            setTimeout(() => {
+                newElement.style.transition = 'none';
+            }, 1100);
+        }
         
         // Get dimensions after adding to DOM and applying scale
         const rect = newElement.getBoundingClientRect();
@@ -357,7 +375,15 @@
         });
         
         // Set initial velocity with constant speed
-        const angle = Math.random() * Math.PI * 2; // Random direction
+        let angle;
+        if (spawnFromTop) {
+            // For elements spawning from top, give them a downward trajectory
+            // Angle between 45° and 135° (π/4 to 3π/4) for downward motion
+            angle = Math.PI/4 + Math.random() * Math.PI/2;
+        } else {
+            // Random direction for initial element
+            angle = Math.random() * Math.PI * 2;
+        }
         Body.setVelocity(body, {
             x: Math.cos(angle) * CONSTANT_SPEED,
             y: Math.sin(angle) * CONSTANT_SPEED
@@ -507,24 +533,38 @@
     }
     
     function resetAllElements() {
-        // Remove all existing elements from DOM and physics world
+        console.log('🌟 Starting fade-out animation...');
+        
+        // Apply fade-out transition to all elements
         bouncingElements.forEach(element => {
-            if (element.element && element.element.parentNode) {
-                element.element.parentNode.removeChild(element.element);
-            }
-            if (element.body) {
-                World.remove(world, element.body);
+            if (element.element) {
+                element.element.style.transition = 'opacity 1s ease-out';
+                element.element.style.opacity = '0';
             }
         });
         
-        // Clear the array
-        bouncingElements = [];
-        
-        // Reset corner hits counter
-        cornerHits = 0;
-        
-        // Create first element
-        createElement();
+        // After fade-out completes, remove elements and create new one
+        setTimeout(() => {
+            // Remove all existing elements from DOM and physics world
+            bouncingElements.forEach(element => {
+                if (element.element && element.element.parentNode) {
+                    element.element.parentNode.removeChild(element.element);
+                }
+                if (element.body) {
+                    World.remove(world, element.body);
+                }
+            });
+            
+            // Clear the array
+            bouncingElements = [];
+            
+            // Reset corner hits counter
+            cornerHits = 0;
+            
+            console.log('🎯 Creating new element with fade-in...');
+            // Create first element in center with fade-in
+            createElement(windowWidth / 2, windowHeight / 2, false, true); // false = not from top, true = enable fade-in
+        }, 1000); // Wait for fade-out to complete
     }
     
     function cornerHitEffect(isManual = false, hitElement = null) {
@@ -539,36 +579,45 @@
             return;
         }
         
-        // Create new element at safe spawn location
+        // Create new element dropping from the top
         let spawnX, spawnY;
         if (hitElement && !isManual) {
-            // For corner hits, spawn at center to avoid walls
-            // Corner hits happen near edges, so center is safest
+            // For corner hits, spawn at top and drop down
             spawnX = windowWidth / 2;
-            spawnY = windowHeight / 2;
+            spawnY = 50; // Near top of screen
             
-            // Add small random offset to avoid exact overlap
-            spawnX += (Math.random() - 0.5) * 100;
-            spawnY += (Math.random() - 0.5) * 100;
+            // Add random horizontal offset to avoid exact overlap
+            spawnX += (Math.random() - 0.5) * (windowWidth * 0.6); // Spread across 60% of screen width
         } else {
-            // Manual triggers always spawn at center
-            spawnX = null; // Will default to center in createElement
-            spawnY = null;
+            // Manual triggers also spawn at top
+            spawnX = windowWidth / 2 + (Math.random() - 0.5) * (windowWidth * 0.4);
+            spawnY = 50;
         }
         
-        createElement(spawnX, spawnY);
+        createElement(spawnX, spawnY, true); // true = spawn from top
         
         // Flash effect only on the element that hit the corner
         if (hitElement && !isManual) {
             isFlashing = true;
+            // Apply pink flash instantly
             hitElement.element.style.textShadow = '0 0 30px #ff0080, 0 0 60px #ff0080, 0 0 90px #ff0080';
             hitElement.element.style.color = '#ff0080';
             
+            // After a brief moment, start the fade-out transition
             setTimeout(() => {
+                // Enable transition for smooth fade-out
+                hitElement.element.style.transition = 'color 1s ease-out, text-shadow 1s ease-out';
+                
+                // Fade back to white
                 hitElement.element.style.textShadow = '0 0 10px rgba(255, 255, 255, 0.3)';
                 hitElement.element.style.color = 'white';
-                isFlashing = false;
-            }, 500);
+                
+                // Clean up transition and reset flashing state after fade completes
+                setTimeout(() => {
+                    hitElement.element.style.transition = 'none';
+                    isFlashing = false;
+                }, 1000);
+            }, 200);
         }
     }
     
@@ -605,16 +654,6 @@
                 detectStuckPattern(element);
             }
             
-            // Clean up old wall cooldowns every 60 frames (~1 second)
-            if (engine.timing.timestamp % 60 < 1) {
-                const currentTime = Date.now();
-                Object.keys(element.wallCooldown).forEach(wallLabel => {
-                    if (currentTime - element.wallCooldown[wallLabel] > 500) {
-                        delete element.wallCooldown[wallLabel];
-                    }
-                });
-            }
-            
             // Instant detection for obvious stuck patterns
             const velocity = body.velocity;
             const velAngle = Math.atan2(velocity.y, velocity.x);
@@ -639,6 +678,16 @@
             const currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
             if (Math.abs(currentSpeed - CONSTANT_SPEED) > 0.1) {
                 normalizeVelocity(body);
+            }
+            
+            // Clean up old wall cooldowns every 60 frames (~1 second)
+            if (engine.timing.timestamp % 60 < 1) {
+                const currentTime = Date.now();
+                Object.keys(element.wallCooldown).forEach(wallLabel => {
+                    if (currentTime - element.wallCooldown[wallLabel] > 500) {
+                        delete element.wallCooldown[wallLabel];
+                    }
+                });
             }
             
             // Update DOM element position based on Matter.js body
